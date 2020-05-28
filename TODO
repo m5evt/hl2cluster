@@ -1,0 +1,16 @@
+To do:
+
+- std::function and std::bind for function callback in HL2udp.cpp
+
+- Restructure some classes/code to have better (some!) class inheritance to avoid duplicated udp code
+
+- Disable TX in the 2nd HL2/send 0's in the packet.
+
+- Take the maximum temperature of any hl2, take an ADC bit
+
+- ADC selection in PC from packet
+
+- Open up TX/phasing for both HL2s
+
+- Main server threads don't have any method to stop them 
+
