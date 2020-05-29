@@ -158,7 +158,7 @@ void HL2server::WaitForDiscovery(void) {
   }
     
   // TODO; move this to a better place
-  unsigned char reply[20] = {0xef, 0xfe, 2, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 73, 0x6,
+  unsigned char reply[20] = {0xef, 0xfe, 2, 0xaa, 0xbb, 0xcc, 0xdd, 0xff, 0xff, 73, 0x6,
                              0, 0, 0, 0, 0, 0, 0, 0, 4};
    
   // This could/should all be done with better code 
