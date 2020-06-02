@@ -137,6 +137,8 @@ void HL2radio::InitialiseHL2(void) {
 	BuildControlRegs(6, buffer);
 	udp->metis_write(ep, buffer, length);
 
+  // See https://github.com/softerhardware/Hermes-Lite2/wiki/External-Clocks
+
   if (hl2_type == PRIMARY) {
     
     unsigned char buffer2[512];	// dummy up a USB HPSDR buffer;
@@ -146,34 +148,106 @@ void HL2radio::InitialiseHL2(void) {
 	  int length = 512;		// udp.metis_write ignores this value
     unsigned char ep = 0x02;	// all Hermes data is sent to end point 2
     
-    
-    
     // EnableCL2_sync76p8MHz
     cout << "i2c write" << endl;
     BuildI2Cwrite(0x62, 0x3b, buffer); // Clock2 CMOS1 output, 3.3V
 	  udp->metis_write(ep, buffer, length);  
-	  BuildControlRegs(22, buffer); 
+	  BuildControlRegs(0xFF, buffer); 
 	  udp->metis_write(ep, buffer, length);        
     std::this_thread::sleep_for(std::chrono::milliseconds(200));    
     
-    BuildI2Cwrite(0x2c, 0x01, buffer); // Enable aux output on clock 1
+    BuildI2Cwrite(0x3d, 0x01, buffer); // OD1_intdiv[11:4]
 	  udp->metis_write(ep, buffer, length); 
-    BuildControlRegs(22, buffer); 
+    BuildControlRegs(0xFF, buffer); 
 	  udp->metis_write(ep, buffer, length); 
     std::this_thread::sleep_for(std::chrono::milliseconds(200));     
-       
-    BuildI2Cwrite(0x31, 0x0c, buffer); // Use clock1 aux output as input for clock2
+    
+    BuildI2Cwrite(0x3e, 0x10, buffer); // OD1_intdiv[3:0]
+	  udp->metis_write(ep, buffer, length); 
+    BuildControlRegs(0xFF, buffer); 
+	  udp->metis_write(ep, buffer, length); 
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));        
+    
+    BuildI2Cwrite(0x31, 0x81, buffer); // Enable divider for clock 2
 	  udp->metis_write(ep, buffer, length);     
-	  BuildControlRegs(22, buffer);     
+	  BuildControlRegs(0xFF, buffer);     
 	  udp->metis_write(ep, buffer, length);     
     std::this_thread::sleep_for(std::chrono::milliseconds(200));      
     
-    BuildI2Cwrite(0x63, 0x01, buffer); // Enable clock2
+    BuildI2Cwrite(0x3c, 0x00, buffer); // integer skew if required
+	  udp->metis_write(ep, buffer, length);     
+	  BuildControlRegs(0xFF, buffer);     
+	  udp->metis_write(ep, buffer, length);     
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));        
+    
+    BuildI2Cwrite(0x3f, 0x1f, buffer); // fractional skew
+	  udp->metis_write(ep, buffer, length);     
+	  BuildControlRegs(0xFF, buffer);     
+	  udp->metis_write(ep, buffer, length);     
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));      
+    
+    BuildI2Cwrite(0x63, 0x01, buffer); // Enable clock 2 output
 	  udp->metis_write(ep, buffer, length);      
-	  BuildControlRegs(22, buffer);     
+	  BuildControlRegs(0xFF, buffer);     
 	  udp->metis_write(ep, buffer, length);     
     std::this_thread::sleep_for(std::chrono::milliseconds(200)); 
     cout << "done i2c write" << endl;    
+    
+    // Align clock 2 with clock 1
+	  BuildControlRegs(0x72, buffer);     
+	  udp->metis_write(ep, buffer, length);      
+	  BuildControlRegs(0xFF, buffer);     
+	  udp->metis_write(ep, buffer, length);     
+    
+  }
+  else {
+    // Secondary HL2
+    unsigned char buffer2[512];	// dummy up a USB HPSDR buffer;
+  	for(int i=0; i<512; i++) {
+  		buffer[i] = 0;
+    }
+	  int length = 512;		// udp.metis_write ignores this value
+    unsigned char ep = 0x02;	// all Hermes data is sent to end point 2
+    
+    // EnableCL2_sync76p8MHz
+    cout << "i2c write" << endl;
+    BuildI2Cwrite(0x17, 0x02, buffer); // FB_intdiv[11:4] Adjust multiplication for new 76.8MHz reference
+	  udp->metis_write(ep, buffer, length);  
+	  BuildControlRegs(0xFF, buffer); 
+	  udp->metis_write(ep, buffer, length);        
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));    
+    
+    BuildI2Cwrite(0x18, 0x20, buffer); // FB_intdiv[3:0]
+	  udp->metis_write(ep, buffer, length); 
+    BuildControlRegs(0xFF, buffer); 
+	  udp->metis_write(ep, buffer, length); 
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));     
+    
+    BuildI2Cwrite(0x10, 0xc0, buffer); // Enable both local oscillator and external clock inputs
+	  udp->metis_write(ep, buffer, length); 
+    BuildControlRegs(0xFF, buffer); 
+	  udp->metis_write(ep, buffer, length); 
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));        
+       
+    BuildI2Cwrite(0x13, 0x03, buffer); // Switch to external clock
+	  udp->metis_write(ep, buffer, length);     
+	  BuildControlRegs(0xFF, buffer);     
+	  udp->metis_write(ep, buffer, length);     
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));      
+    
+    BuildI2Cwrite(0x10, 0x44, buffer); // Enable external clock input only plus refmode
+	  udp->metis_write(ep, buffer, length);     
+	  BuildControlRegs(0xFF, buffer);     
+	  udp->metis_write(ep, buffer, length);     
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));        
+    
+    BuildI2Cwrite(0x21, 0x0c, buffer); // Use previous channel, bypass divider
+	  udp->metis_write(ep, buffer, length);     
+	  BuildControlRegs(0xFF, buffer);     
+	  udp->metis_write(ep, buffer, length);     
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));      
+    
+    cout << "done i2c write" << endl;     
   }
 
 	// Initialize the first TxBuffer (currently empty) with a valid control frame (on startup only)
@@ -325,13 +399,20 @@ void HL2radio::BuildControlRegs(unsigned reg_num, unsigned char* outbuf) {
 	        outbuf[7] = ((lna_gain + 12) & 0x3f) | 0x40; // new gain protocol for HL2
 	        break;
 	
-	  case 22:
+	  case 0xFF:
           outbuf[3] = 0;
 	        outbuf[4] = 0;
 	        outbuf[5] = 0;
 	        outbuf[6] = 0;
 	        outbuf[7] = 0;
-	        break;					
+	        break;	
+    // 0x39          
+	  case 114:
+	        outbuf[4] = 0;
+	        outbuf[5] = 0;
+	        outbuf[6] = 0;
+	        outbuf[7] = 1;
+	        break;	          				
 
 	  default:
 	        fprintf(stderr, "Invalid Hermes/Metis register selection: %d\n", reg_num);
