@@ -97,6 +97,9 @@ void HL2server::AddHL2s(void) {
     radios[i]->RxConnect();
     cout << "Added HL2 " << i << endl;
   }
+  
+  // Reset the primary to reset primary/secondary sync
+  radios[0]->ResetAllSync();
 }
 
 // Each udp connection to an HL2 runs a thread for the packets coming 
@@ -158,9 +161,16 @@ void HL2server::WaitForDiscovery(void) {
   }
     
   // TODO; move this to a better place
+  // Emulate as an orion
+  
+  unsigned char reply[20] = {0xef, 0xfe, 2, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 73, 0x5,
+                             0, 0, 0, 0, 0, 0, 0, 0, 4};
+  
+  // HL2
+  /*
   unsigned char reply[20] = {0xef, 0xfe, 2, 0xaa, 0xbb, 0xcc, 0xdd, 0xff, 0xff, 73, 0x6,
                              0, 0, 0, 0, 0, 0, 0, 0, 4};
-   
+  */
   // This could/should all be done with better code 
   memset(buffer, 0, 60);
   
@@ -204,6 +214,22 @@ void HL2server::ClusterThread(void) {
         // Might be in the second CC message in the packet
         num_receivers = ((buffer[15+512] >> 3) & 7) + 1;
       }
+      
+      // Has RX 1 changed frequency?
+      if (buffer[11]==0x04 & 1) {
+        int freq = int(buffer[15]);   
+        freq += int(buffer[14])  << 8;    
+        freq += int(buffer[13]) << 16;
+        freq += int(buffer[12]) << 24;   
+        //radios[0]->ResetNCOSync(freq);                             
+      } 
+      else if (buffer[11+512]==0x04 & 1) {
+        int freq = int(buffer[15+512]);   
+        freq += int(buffer[14+512])  << 8;    
+        freq += int(buffer[13+512]) << 16;
+        freq += int(buffer[12+512]) << 24;        
+        //radios[0]->ResetNCOSync(freq);           
+      }      
       
       switch(buffer[2]) {
         case 1:

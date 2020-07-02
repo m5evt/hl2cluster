@@ -141,13 +141,10 @@ void HL2radio::InitialiseHL2(void) {
 
   if (hl2_type == PRIMARY) {
     
-    unsigned char buffer2[512];	// dummy up a USB HPSDR buffer;
   	for(int i=0; i<512; i++) {
   		buffer[i] = 0;
     }
-	  int length = 512;		// udp.metis_write ignores this value
-    unsigned char ep = 0x02;	// all Hermes data is sent to end point 2
-    
+
     // EnableCL2_sync76p8MHz
     cout << "i2c write" << endl;
     BuildI2Cwrite(0x62, 0x3b, buffer); // Clock2 CMOS1 output, 3.3V
@@ -193,22 +190,20 @@ void HL2radio::InitialiseHL2(void) {
     std::this_thread::sleep_for(std::chrono::milliseconds(200)); 
     cout << "done i2c write" << endl;    
     
-    // Align clock 2 with clock 1
+    // clock generator must be reset to properly align clock 2 with clock 1
+    reset_clock_sync = 1;
 	  BuildControlRegs(0x72, buffer);     
-	  udp->metis_write(ep, buffer, length);      
+	  udp->metis_write(ep, buffer, length); 
+    reset_clock_sync = 0;     
 	  BuildControlRegs(0xFF, buffer);     
 	  udp->metis_write(ep, buffer, length);     
     
   }
   else {
     // Secondary HL2
-    unsigned char buffer2[512];	// dummy up a USB HPSDR buffer;
   	for(int i=0; i<512; i++) {
   		buffer[i] = 0;
     }
-	  int length = 512;		// udp.metis_write ignores this value
-    unsigned char ep = 0x02;	// all Hermes data is sent to end point 2
-    
     // EnableCL2_sync76p8MHz
     cout << "i2c write" << endl;
     BuildI2Cwrite(0x17, 0x02, buffer); // FB_intdiv[11:4] Adjust multiplication for new 76.8MHz reference
@@ -249,7 +244,19 @@ void HL2radio::InitialiseHL2(void) {
     
     cout << "done i2c write" << endl;     
   }
+  
+  for(int i=0; i<512; i++) {
+    buffer[i] = 0;
+  }
+  
+  enable_sync_lync = 1;
+  BuildControlRegs(0x72, buffer);     
+	udp->metis_write(ep, buffer, length); 
+  BuildControlRegs(0xFF, buffer);     
+	udp->metis_write(ep, buffer, length);  
+     
 
+ 
 	// Initialize the first TxBuffer (currently empty) with a valid control frame (on startup only)
 	BuildControlRegs(0, buffer);
 	unsigned char* initial = TxBuf[0];
@@ -408,10 +415,20 @@ void HL2radio::BuildControlRegs(unsigned reg_num, unsigned char* outbuf) {
 	        break;	
     // 0x39          
 	  case 114:
-	        outbuf[4] = 0;
+          outbuf[4] = 0;
 	        outbuf[5] = 0;
 	        outbuf[6] = 0;
-	        outbuf[7] = 1;
+	        outbuf[7] = 0;
+          
+          if (reset_clock_sync) outbuf[7] |= 0x01;
+          if (enable_sync_lync) outbuf[4] |= 0x80;
+          if (reset_all_sync) {
+            outbuf[6] |= 0x02;
+          }
+          else if (reset_NCO_sync) {
+            outbuf[6] |= 0x01;
+          }
+          
 	        break;	          				
 
 	  default:
@@ -420,6 +437,43 @@ void HL2radio::BuildControlRegs(unsigned reg_num, unsigned char* outbuf) {
 	};
 
 };
+
+void HL2radio::ResetAllSync(void) {
+	unsigned char buffer[512];	// dummy up a USB HPSDR buffer;
+	for(int i=0; i<512; i++) {
+		buffer[i] = 0;
+  }
+	int length = 512;		// udp.metis_write ignores this value
+	unsigned char ep = 0x02;	// all Hermes data is sent to end point 2
+  
+  reset_all_sync = 1;
+  BuildControlRegs(0x72, buffer);     
+  reset_all_sync = 0; 
+	udp->metis_write(ep, buffer, length); 
+  BuildControlRegs(0xFF, buffer);     
+	udp->metis_write(ep, buffer, length);     
+}
+
+void HL2radio::ResetNCOSync(const int &rxfreq) {
+  
+  if (rxfreq == last_rxfreq) return;
+  cout << "CHANGE FREQ ***************" << endl;
+  last_rxfreq = rxfreq;
+	unsigned char buffer[512];	// dummy up a USB HPSDR buffer;
+	for(int i=0; i<512; i++) {
+		buffer[i] = 0;
+  }
+	int length = 512;		// udp.metis_write ignores this value
+	unsigned char ep = 0x02;	// all Hermes data is sent to end point 2
+  
+  reset_NCO_sync = 1;
+  BuildControlRegs(0x72, buffer);     
+  reset_NCO_sync = 0; 
+	udp->metis_write(ep, buffer, length); 
+  BuildControlRegs(0xFF, buffer);     
+	udp->metis_write(ep, buffer, length);     
+}
+
 
 // for debugging
 void HL2radio::PrintRawBuf(unsigned char* inbuf)	{

@@ -102,6 +102,12 @@ class HL2radio {
 	  unsigned long LostEthernetRx;	//
 	  unsigned long CurrentEthSeqNum;	// Diagnostic
     
+    bool reset_clock_sync;
+    bool enable_sync_lync;
+    bool reset_all_sync;
+    bool reset_NCO_sync;
+    int last_rxfreq;
+    
 	  bool TxStop;
 
     int hl2_type;
@@ -116,6 +122,10 @@ class HL2radio {
         
     HL2radio(int radio_num, HL2ipaddr* ipaddr) : ipaddr(ipaddr) { 
       hl2_type = radio_num;    
+      reset_clock_sync = 0;
+      enable_sync_lync = 0;
+      reset_all_sync = 0;
+      reset_NCO_sync = 0;
     };
 
     // Deconstructor
@@ -135,7 +145,8 @@ class HL2radio {
     void StartStream(void);
     void ForwardFromPC(unsigned char *buff);
     void StartReceiveIqThread(void);
-    
+    void ResetAllSync(void);    
+    void ResetNCOSync(const int &rxfreq);
     // Variables
     int rx_sample_rate;
     int num_receivers;    
