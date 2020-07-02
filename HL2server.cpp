@@ -221,14 +221,14 @@ void HL2server::ClusterThread(void) {
         freq += int(buffer[14])  << 8;    
         freq += int(buffer[13]) << 16;
         freq += int(buffer[12]) << 24;   
-        //radios[0]->ResetNCOSync(freq);                             
+        radios[0]->ResetNCOSync(freq);                             
       } 
       else if (buffer[11+512]==0x04 & 1) {
         int freq = int(buffer[15+512]);   
         freq += int(buffer[14+512])  << 8;    
         freq += int(buffer[13+512]) << 16;
         freq += int(buffer[12+512]) << 24;        
-        //radios[0]->ResetNCOSync(freq);           
+        radios[0]->ResetNCOSync(freq);           
       }      
       
       switch(buffer[2]) {

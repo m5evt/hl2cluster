@@ -423,10 +423,10 @@ void HL2radio::BuildControlRegs(unsigned reg_num, unsigned char* outbuf) {
           if (reset_clock_sync) outbuf[7] |= 0x01;
           if (enable_sync_lync) outbuf[4] |= 0x80;
           if (reset_all_sync) {
-            outbuf[6] |= 0x02;
+            outbuf[4] |= 0x02;
           }
           else if (reset_NCO_sync) {
-            outbuf[6] |= 0x01;
+            outbuf[4] |= 0x01;
           }
           
 	        break;	          				
